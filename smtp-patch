@@ -1,0 +1,35 @@
+--- /usr/share/perl5/OpenXPKI/Server/Notification/SMTP.ori	2024-12-22 08:30:00.342394313 +0000
++++ /usr/share/perl5/OpenXPKI/Server/Notification/SMTP.pm	2024-12-22 09:23:02.107477144 +0000
+@@ -164,6 +164,7 @@
+ use Net::SMTP;
+ use Net::Domain;
+ use MIME::Entity;
++use Authen::SASL qw(Perl);
+ 
+ use Encode;
+ 
+@@ -258,6 +259,14 @@
+         $transport->starttls;
+     }
+ 
++    my $sasl = Authen::SASL->new(
++	mechanism => 'PLAIN',
++	callback => {
++	pass => $cfg->{password},
++	user => $cfg->{username},
++	}
++    );
++
+     if($cfg->{username}) {
+         if(!$cfg->{password}) {
+           CTX('log')->system->error(sprintf("Empty password or no password provided (for user %s)", $cfg->{username}));
+@@ -266,7 +275,8 @@
+         }
+         CTX('log')->system->debug(sprintf("Authenticating to server (user %s)", $cfg->{username}));
+ 
+-        if(!$transport->auth($cfg->{username}, $cfg->{password})) {
++	if(!$transport->auth($sasl)) {
++        #if(!$transport->auth($cfg->{username}, $cfg->{password})) {
+           CTX('log')->system->error(sprintf("SMTP SASL authentication failed (user: %s, error: %s)", $cfg->{username}, $transport->message));
+           $transport->quit;
+           return undef;
